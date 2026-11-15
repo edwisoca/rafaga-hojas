@@ -91,6 +91,12 @@ pub fn start() {
                     let (stored_ui, stored_prefs) = (stored(crate::prefs::UI_KEY), stored(crate::prefs::PREFS_KEY));
                     crate::prefs::restore(&mut app, stored_ui.as_deref(), stored_prefs.as_deref());
                     let mut prefs = crate::prefs::PrefsSync::new(stored_ui, stored_prefs);
+                    // Ráfaga elige el idioma de todas sus aplicaciones: `?lang=es|en` manda sobre lo guardado.
+                    if let Some(code) = query_param("lang")
+                        && let Some(l) = gridcraft_ui_egui::i18n::Language::parse(&code)
+                    {
+                        app.ui.language = l;
+                    }
                     SheetApp::setup_context_for_language(&cc.egui_ctx, false, app.ui.language);
                     if let Some(bridge) = &app_bridge {
                         prefs.keep_user_name(app.session.prefs.user_name.clone());
