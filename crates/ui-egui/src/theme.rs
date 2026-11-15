@@ -205,11 +205,11 @@ const SHEET_PY_TAG: Color32 = rgb(0x1E6E4E);
 
 impl Tokens {
     pub fn light() -> Tokens {
-        Tokens::palette(false)
+        host_override(Tokens::palette(false))
     }
 
     pub fn dark() -> Tokens {
-        Tokens::palette(true)
+        host_override(Tokens::palette(true))
     }
 
     /// One palette for both modes: each colour is written once, with its light and dark values.
@@ -310,6 +310,78 @@ impl Tokens {
         let set = if on_sheet { &self.sheet_ref_colors } else { &self.ref_colors };
         set.get(index % set.len()).copied().unwrap_or(self.text)
     }
+}
+
+/// Ráfaga: colores que el anfitrión (la ventana de Ráfaga) pasa a la aplicación incrustada.
+/// Cada campo es opcional; lo que no llega se queda con la paleta propia de la aplicación.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct HostTheme {
+    pub dark: bool,
+    pub accent: Option<Color32>,
+    pub on_accent: Option<Color32>,
+    pub surface: Option<Color32>,
+    pub bg: Option<Color32>,
+    pub line: Option<Color32>,
+    pub text: Option<Color32>,
+    pub muted: Option<Color32>,
+    pub hover: Option<Color32>,
+    pub soft: Option<Color32>,
+}
+
+static HOST_THEME: std::sync::OnceLock<HostTheme> = std::sync::OnceLock::new();
+
+/// Fija los colores del anfitrión; solo se puede una vez, al arrancar.
+pub fn set_host_theme(h: HostTheme) {
+    let _ = HOST_THEME.set(h);
+}
+
+/// Mezcla `a` con `b` (`t` de 0 a 1).
+fn mix(a: Color32, b: Color32, t: f32) -> Color32 {
+    let m = |x: u8, y: u8| (x as f32 + (y as f32 - x as f32) * t).round() as u8;
+    Color32::from_rgb(m(a.r(), b.r()), m(a.g(), b.g()), m(a.b(), b.b()))
+}
+
+fn host_override(mut t: Tokens) -> Tokens {
+    let Some(h) = HOST_THEME.get() else { return t };
+    if h.dark != t.dark {
+        return t;
+    }
+    let (white, black) = (Color32::WHITE, Color32::BLACK);
+    if let Some(sf) = h.surface {
+        t.ribbon = sf;
+        t.menu_bg = sf;
+        t.input_bg = sf;
+        t.status_bar = sf;
+        t.tab_active = sf;
+    }
+    if let Some(bg) = h.bg {
+        t.window = bg;
+        t.tab_bar = bg;
+    }
+    if let Some(l) = h.line {
+        t.ribbon_border = l;
+        t.separator = l;
+        t.input_border = mix(l, if t.dark { white } else { black }, 0.25);
+    }
+    if let Some(x) = h.text {
+        t.text = x;
+    }
+    if let Some(m) = h.muted {
+        t.text_dim = m;
+        t.text_disabled = mix(m, h.surface.unwrap_or(t.ribbon), 0.5);
+    }
+    if let Some(a) = h.accent {
+        t.accent = a;
+        t.accent_dark = mix(a, black, 0.2);
+    }
+    if let Some(x) = h.soft {
+        t.accent_soft = x;
+    }
+    if let Some(x) = h.hover {
+        t.hover = x;
+        t.pressed = mix(x, h.accent.unwrap_or(t.accent), 0.18);
+    }
+    t
 }
 
 /// WCAG 2 relative luminance of an opaque colour.

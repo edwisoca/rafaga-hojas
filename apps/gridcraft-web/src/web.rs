@@ -64,6 +64,37 @@ pub fn start() {
                     }
                     let mut app = SheetApp::new(session, services);
                     app.ui.system_theme = true;
+                    // Ráfaga también pasa sus colores (`?theme=dark|light&ac=#rrggbb&…`): la app los usa en vez de los suyos.
+                    let host_dark = query_param("theme").map(|mode| {
+                        use gridcraft_ui_egui::theme::{self, HostTheme};
+                        let col = |k: &str| {
+                            let v = query_param(k)?;
+                            let v = v.trim().trim_start_matches('#');
+                            if v.len() != 6 {
+                                return None;
+                            }
+                            let n = u32::from_str_radix(v, 16).ok()?;
+                            Some(egui::Color32::from_rgb((n >> 16) as u8, (n >> 8) as u8, n as u8))
+                        };
+                        let dark = mode == "dark";
+                        theme::set_host_theme(HostTheme {
+                            dark,
+                            accent: col("ac"),
+                            on_accent: col("acf"),
+                            surface: col("sf"),
+                            bg: col("bg"),
+                            line: col("ln"),
+                            text: col("fg"),
+                            muted: col("mu"),
+                            hover: col("hv"),
+                            soft: col("as"),
+                        });
+                        dark
+                    });
+                    if let Some(d) = host_dark {
+                        app.ui.system_theme = false;
+                        app.ui.dark = d;
+                    }
                     // `?chrome=none|notitlebar|nofiletab`: a host that embeds the sheet in its own window and owns the files
                     // can leave the title bar and/or the File tab undrawn (`Chrome`, #1877). An unknown value keeps
                     // everything, as the default does.
