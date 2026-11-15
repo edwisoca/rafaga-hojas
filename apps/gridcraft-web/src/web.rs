@@ -139,6 +139,11 @@ pub fn start() {
                         }
                         bridge.post_ready();
                     }
+                    // Dentro de Ráfaga arranca en Archivo › Inicio (nuevo, abrir, plantillas), como Documentos;
+                    // el archivo que envíe la página lo reemplaza y Esc vuelve al libro en blanco.
+                    if app_bridge.is_some() {
+                        app.open_backstage(gridcraft_ui_egui::backstage::Page::Home);
+                    }
                     crate::api::install(&mut app, cc.egui_ctx.clone());
                     Ok(Box::new(WebShell { app, inbox, bridge: app_bridge, prefs }))
                 }),
