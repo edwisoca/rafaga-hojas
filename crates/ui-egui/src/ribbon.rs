@@ -61,7 +61,14 @@ pub fn show(app: &mut SheetApp, ui: &mut Ui) {
         .show(ui, |ui| {
             // Tabs row.
             let tabs_rect = Rect::from_min_size(ui.cursor().min, vec2(ui.available_width(), 32.0));
+            // Ráfaga: la fila de pestañas es la barra de color de Ráfaga.
+            if let Some(bg) = theme::strip_bg() {
+                let full = ui.ctx().content_rect();
+                ui.painter().rect_filled(Rect::from_min_max(pos2(full.left(), tabs_rect.top()), pos2(full.right(), tabs_rect.bottom() + 2.0)), 0.0, bg);
+            }
+            let strip_t = theme::strip_tokens(t);
             ui.scope_builder(egui::UiBuilder::new().max_rect(tabs_rect), |ui| {
+                let t = strip_t;
                 ui.horizontal(|ui| {
                     ui.spacing_mut().item_spacing.x = 2.0;
                     ui.add_space(8.0);
@@ -249,7 +256,7 @@ fn scroll_arrows(ui: &mut Ui, t: &Tokens, tab: &str, scroll: egui::scroll_area::
 /// The File tab opens the Backstage view (New, Open, Info, Save As, Print, Export, Options…), like
 /// Excel's; the ribbon's tab and collapsed state are left as they were for when it closes.
 fn file_menu(app: &mut SheetApp, ui: &mut Ui) {
-    let t = Tokens::get(ui.ctx());
+    let t = theme::strip_tokens(Tokens::get(ui.ctx()));
     let label = egui::RichText::new(app.ui.language.tr("File")).font(theme::ui_font(13.5)).color(t.accent);
     let file = ui.add(egui::Button::new(label).frame(false).min_size(vec2(46.0, 30.0)));
     if file.clicked() {
